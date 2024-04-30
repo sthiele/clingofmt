@@ -5,11 +5,19 @@ use std::io::Write;
 
 #[derive(Serialize, Deserialize)]
 pub struct Config {
+    break_after_head: bool,
+    break_after_body_atom: bool,
+    break_after_colon: bool,
     soft_flush_limit: usize,
 }
 impl Default for Config {
     fn default() -> Self {
-        Self { soft_flush_limit: 60 }
+        Self {
+            break_after_head: true,
+            break_after_body_atom: false,
+            break_after_colon: false,
+            soft_flush_limit: 60,
+        }
     }
 }
 
@@ -111,7 +119,7 @@ pub fn format_program(
     source_code: &[u8],
     out: &mut dyn Write,
     debug: bool,
-    config: &Config,   
+    config: &Config,
 ) -> Result<()> {
     let mut formatter = Formatter {
         out,
@@ -163,7 +171,7 @@ pub fn format_program(
                     "statement" => {
                         let mut buf = Vec::new();
                         let stmt_type =
-                            format_statement(&node, source_code, &mut buf, debug,config)?;
+                            format_statement(&node, source_code, &mut buf, debug, config)?;
 
                         formatter.process_statement(stmt_type, &buf)?;
                         short_cut = true;
@@ -233,7 +241,7 @@ fn format_statement(
     source_code: &[u8],
     out: &mut dyn Write,
     debug: bool,
-    config: &Config, 
+    config: &Config,
 ) -> Result<StatementType> {
     let mut buf: Vec<u8> = vec![];
     let mut soft_flush = false;
@@ -430,9 +438,15 @@ fn format_statement(
                 "COLON" => {
                     if state.in_theory_atom_definition | state.is_show {
                         write!(buf, " ")?;
-                    } else if state.in_conjunction | state.in_optcondition {
+                    } else if config.break_after_colon
+                        && (state.in_conjunction | state.in_optcondition)
+                    {
                         mindent_level += 1;
                         flush = true;
+                    } else {
+                        write!(buf, " ")?;
+                        mindent_level += 1;
+                        soft_flush = true;
                     }
                 }
                 "LBRACE" => {
@@ -444,20 +458,23 @@ fn format_statement(
                     }
                 }
                 "COMMA" => {
-                    if state.in_termvec == 0 && !state.is_show {
+                    if config.break_after_body_atom && state.in_termvec == 0 && !state.is_show {
                         flush = true;
                     } else {
                         write!(buf, " ")?;
+                        soft_flush = true;
                     }
-                    soft_flush = true;
                 }
                 "IF" => {
                     state.has_if = true;
                     mindent_level += 1; // decrease after bodydot
                     if !state.has_head_like {
                         write!(buf, " ")?;
-                    } else {
+                    } else if config.break_after_head {
                         flush = true;
+                    } else {
+                        write!(buf, " ")?;
+                        soft_flush = true;
                     }
                 }
                 _ => {}
