@@ -2,8 +2,7 @@ use anyhow::Result;
 use log::{debug, warn};
 use std::io::Write;
 
-const SOFT_FLUSH_LIMIT :usize = 60;
-
+const SOFT_FLUSH_LIMIT: usize = 60;
 
 #[cfg(test)]
 mod tests;
@@ -58,7 +57,8 @@ impl<'a> Formatter<'a> {
         }
         Ok(())
     }
-    fn process_comment(&mut self, buf: &[u8]) -> Result<()> {
+    /// Returns true if comment contains fmt: off statement
+    fn process_comment(&mut self, buf: &[u8]) -> Result<bool> {
         match self.state {
             No => {}
             SomeBlock | Block(StatementType::Other) => {
@@ -70,7 +70,10 @@ impl<'a> Formatter<'a> {
         write!(self.out, "{}", text.trim_end())?;
         self.state = SomeBlock;
 
-        Ok(())
+        if text.contains("fmt: off") {
+            return Ok(true);
+        }
+        Ok(false)
     }
     fn process_statement(&mut self, stmt_type: StatementType, buf: &[u8]) -> Result<()> {
         match (self.state, stmt_type) {
@@ -104,6 +107,8 @@ pub fn format_program(
     out: &mut dyn Write,
     debug: bool,
 ) -> Result<()> {
+    let mut skip_fmt = false;
+    let mut start_unformatted = 0;
     let mut formatter = Formatter {
         out,
         state: FormatterState::No,
@@ -153,16 +158,33 @@ pub fn format_program(
                 match node.kind() {
                     "statement" => {
                         let mut buf = Vec::new();
-                        let stmt_type =
-                            format_statement(&node, source_code, &mut buf, debug)?;
-
-                        formatter.process_statement(stmt_type, &buf)?;
+                        if !skip_fmt {
+                            let stmt_type = format_statement(&node, source_code, &mut buf, debug)?;
+                            formatter.process_statement(stmt_type, &buf)?;
+                        }
                         short_cut = true;
                     }
                     "single_comment" | "multi_comment" => {
                         let start_byte = node.start_byte();
                         let end_byte = node.end_byte();
-                        formatter.process_comment(&source_code[start_byte..end_byte])?;
+                        if skip_fmt {
+                            let last_text =
+                                std::str::from_utf8(&source_code[start_byte..end_byte]).unwrap();
+                            if last_text.contains("fmt: on") {
+                                let unformated_text = std::str::from_utf8(
+                                    &source_code[start_unformatted..start_byte],
+                                )
+                                .unwrap();
+                                write!(formatter.out, "{}", unformated_text)?;
+                                writeln!(formatter.out, "{}", last_text)?;
+                                skip_fmt = false;
+                            }
+                        } else if formatter.process_comment(&source_code[start_byte..end_byte])? {
+                            skip_fmt = true;
+                            start_unformatted = node.end_byte();
+                        } else {
+                            skip_fmt = false;
+                        }
                     }
                     _ => {}
                 }
@@ -198,6 +220,12 @@ pub fn format_program(
             match node.kind() {
                 "source_file" => {
                     formatter.finish_program()?;
+                    if skip_fmt {
+                        let unformated_text =
+                            std::str::from_utf8(&source_code[start_unformatted..node.end_byte()])
+                                .unwrap();
+                        write!(formatter.out, "{}", unformated_text)?;
+                    }
                 }
                 "statement" => short_cut = false,
                 _ => {}

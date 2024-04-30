@@ -16,6 +16,48 @@ fn fmt_and_cmp(source_code: &str, res: &str) {
 }
 
 #[test]
+fn test_fmt_off_on() {
+    let source = r#"a(A):-b(A,V),c(A).
+% Comment1
+% fmt: off
+% Comment2 in fmt: off
+    index(A,I):-vary(A),I = #count{ B : vary(B),B <= A },not bounds(0,0).
+    counter(I,1)  :-index(A,I),bounds(L,U),L <= I,selected(A).counter(I,C+1):-index(A,I),bounds(L,U),C < U,selected(A),counter(I+1,C).
+    counter(I,C)  :-index(A,I),bounds(L,U),L < C+I,counter(I+1,C).
+% Comment3 in fmt: off
+% Comment4 in fmt: off
+:- bounds(L,U),0 < L,not counter(1,L).:- bounds(L,U),index(A,I),selected(A),counter(I+1,U).
+% Comment5 in fmt: off
+% fmt: on
+
+% Comment6
+exclude(M,A):-model(M),select(A,0).
+"#;
+    let result = r#"a(A) :-
+    b(A, V),
+    c(A).
+
+% Comment1
+% fmt: off
+% Comment2 in fmt: off
+    index(A,I):-vary(A),I = #count{ B : vary(B),B <= A },not bounds(0,0).
+    counter(I,1)  :-index(A,I),bounds(L,U),L <= I,selected(A).counter(I,C+1):-index(A,I),bounds(L,U),C < U,selected(A),counter(I+1,C).
+    counter(I,C)  :-index(A,I),bounds(L,U),L < C+I,counter(I+1,C).
+% Comment3 in fmt: off
+% Comment4 in fmt: off
+:- bounds(L,U),0 < L,not counter(1,L).:- bounds(L,U),index(A,I),selected(A),counter(I+1,U).
+% Comment5 in fmt: off
+% fmt: on
+
+% Comment6
+exclude(M, A) :-
+    model(M),
+    select(A, 0).
+"#;
+    fmt_and_cmp(source, result);
+}
+
+#[test]
 fn test_pass_new() {
     fmt_and_cmp(" \n \n ", "");
     fmt_and_cmp("% bla blub       ", "% bla blub\n");
