@@ -67,7 +67,7 @@ fn run() -> Result<()> {
 
     let mut parser = tree_sitter::Parser::new();
     parser
-        .set_language(tree_sitter_clingo::language())
+        .set_language(&tree_sitter_clingo::language())
         .expect("Error loading clingo grammar");
     let tree = parser.parse(&source_code, None).unwrap();
 
