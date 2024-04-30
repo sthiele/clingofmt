@@ -1,7 +1,10 @@
 use super::*;
-
+const CONFIG : Config = Config{
+    soft_flush_limit: 60,
+};
 /// function to simplify tests
 fn fmt_and_cmp(source_code: &str, res: &str) {
+
     let mut buf = Vec::new();
     let mut parser = tree_sitter::Parser::new();
     parser
@@ -10,7 +13,7 @@ fn fmt_and_cmp(source_code: &str, res: &str) {
 
     let tree = parser.parse(&source_code, None).unwrap();
 
-    format_program(&tree, source_code.as_bytes(), &mut buf, false).unwrap();
+    format_program(&tree, source_code.as_bytes(), &mut buf, false,&CONFIG).unwrap();
     let parse_res = std::str::from_utf8(&buf).unwrap();
     assert_eq!(parse_res, res)
 }

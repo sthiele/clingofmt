@@ -61,6 +61,7 @@ fn main() {
 
 fn run() -> Result<()> {
     let opt = Opt::parse();
+    let cfg: clingofmt::Config = confy::load_path(".clingofmt")?;
     let path = opt.file.to_str().unwrap();
     let source_code =
         fs::read(path).with_context(|| format!("Error reading source file {}", path))?;
@@ -72,7 +73,7 @@ fn run() -> Result<()> {
     let tree = parser.parse(&source_code, None).unwrap();
 
     let mut buf = Vec::new();
-    format_program(&tree, &source_code, &mut buf, opt.debug)?;
+    format_program(&tree, &source_code, &mut buf, opt.debug, &cfg)?;
 
     let mut out = std::io::stdout();
     let buf_str = std::str::from_utf8(&buf)?;

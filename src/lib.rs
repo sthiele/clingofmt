@@ -1,9 +1,17 @@
 use anyhow::Result;
 use log::{debug, warn};
+use serde_derive::{Deserialize, Serialize};
 use std::io::Write;
 
-const SOFT_FLUSH_LIMIT :usize = 60;
-
+#[derive(Serialize, Deserialize)]
+pub struct Config {
+    soft_flush_limit: usize,
+}
+impl Default for Config {
+    fn default() -> Self {
+        Self { soft_flush_limit: 60 }
+    }
+}
 
 #[cfg(test)]
 mod tests;
@@ -103,6 +111,7 @@ pub fn format_program(
     source_code: &[u8],
     out: &mut dyn Write,
     debug: bool,
+    config: &Config,   
 ) -> Result<()> {
     let mut formatter = Formatter {
         out,
@@ -154,7 +163,7 @@ pub fn format_program(
                     "statement" => {
                         let mut buf = Vec::new();
                         let stmt_type =
-                            format_statement(&node, source_code, &mut buf, debug)?;
+                            format_statement(&node, source_code, &mut buf, debug,config)?;
 
                         formatter.process_statement(stmt_type, &buf)?;
                         short_cut = true;
@@ -224,6 +233,7 @@ fn format_statement(
     source_code: &[u8],
     out: &mut dyn Write,
     debug: bool,
+    config: &Config, 
 ) -> Result<StatementType> {
     let mut buf: Vec<u8> = vec![];
     let mut soft_flush = false;
@@ -348,7 +358,7 @@ fn format_statement(
             // What happens after the element
             if soft_flush || flush {
                 let buf_str = std::str::from_utf8(&buf)?;
-                if buf_str.len() >= SOFT_FLUSH_LIMIT || flush {
+                if buf_str.len() >= config.soft_flush_limit || flush {
                     write!(out, "{}", buf_str)?;
                     buf.clear();
                     writeln!(out)?;
