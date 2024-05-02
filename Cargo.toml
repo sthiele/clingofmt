@@ -1,7 +1,7 @@
 
 [package]
 name = "clingofmt"
-version = "0.1.1"
+version = "0.1.2-dev"
 authors = ["Sven Thiele <sthiele78@gmail.com>"]
 description = "Tool to find and fix formatting issues in clingo files"
 readme = "README.md"
