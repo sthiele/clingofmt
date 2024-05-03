@@ -14,6 +14,6 @@ exclude = ["/.github"]
 clap = { version = "4.0", features = ["derive"] }
 anyhow = "1.0"
 log = "0.4"
-env_logger = "0.9"
+env_logger = "0.11"
 tree-sitter = "~0.22.0"
 tree-sitter-clingo = "~0.0.13"
